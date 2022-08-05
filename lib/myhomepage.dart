@@ -18,87 +18,67 @@ class _MyHomePageState extends State<MyHomePage> {
   double? _progress;
   UploadTask? uploadTask;
   String? uploadingFile;
-
-  // void singleFile() async {
-  //   FilePickerResult? result = await FilePicker.platform.pickFiles();
-
-  //   if (result != null) {
-  //     File file = File(result.files.single.path!);
-
-  //     setState(() {
-  //       fileString = result.files.single.path!.toString();
-  //       //fileExtension = result.files.single.extension!.toString();
-  //       fileName = result.files.single.name.toString();
-  //       print(fileName);
-  //       // OpenFile.open(fileString);
-  //       final ref = FirebaseStorage.instance.ref().child(fileName);
-  //       uploadTask = ref.putFile(file);
-
-  //       uploadTask!.snapshotEvents.listen((event) {
-  //         setState(() {
-  //           _progress =
-  //               event.bytesTransferred.toDouble() / event.totalBytes.toDouble();
-  //           print(_progress.toString());
-  //         });
-  //         if (event.state == TaskState.success) {
-  //           _progress = null;
-  //           print(_progress);
-  //           //Fluttertoast.showToast(msg: 'File added to the library');
-  //         }
-  //       }).onError((error) {
-  //         // do something to handle error
-  //       });
-  //     });
-  //   } else {
-  //     fileString = "User canceled the picker.";
-  //     // User canceled the picker
-  //   }
-  // }
-
   List<File>? files;
+  Map<String?, double?>? progressesOfFiles;
 
-  void uploadTask2() {
+ 
+
+  @override
+  void initState() {
+  progressesOfFiles = {null: null};
+  
+    super.initState();
+  }
+
+  void uploadTaskProgress() {
     uploadTask!.snapshotEvents.listen((event) {
       setState(() {
-        //uploadingFile = event.toString();
+       
         uploadingFile = event.ref.fullPath;
         _progress =
             event.bytesTransferred.toDouble() / event.totalBytes.toDouble();
-        //print(_progress.toString());
+        progressesOfFiles![uploadingFile] = _progress;
+        
       });
       if (event.state == TaskState.success) {
         _progress = null;
         uploadingFile = null;
-        //print(_progress);
-        //Fluttertoast.showToast(msg: 'File added to the library');
+        
       }
     }).onError((error) {
       // do something to handle error
     });
   }
 
-  void singleFile() async {
+  void putFile() async {
+    progressesOfFiles?.clear();
+
     FilePickerResult? result =
         await FilePicker.platform.pickFiles(allowMultiple: true);
 
     if (result != null) {
       files = result.paths.map((path) => File(path!)).toList();
 
-      for (int i = 0; i < files!.length; i++)
-      //for (var file1 in files!)
+      //for (int i = 0; i < files!.length; i++)
+      for (var file1 in files!)
       {
-        // print(file1);
-        // String file2 = file1.path;
-        //file2.lastIndexOf("/");
-        String fileName = files![i]
+        String fileName = file1 //files![i]
             .path
             .toString()
-            .substring(files![i].path.lastIndexOf("/") + 1);
-        // print(fileName);
+             .substring(file1.path.lastIndexOf("/") + 1);
+            //.substring(files![i].path.lastIndexOf("/") + 1);
+       
         final ref = FirebaseStorage.instance.ref().child(fileName);
-        //ref.putFile(files![i]);
-        uploadTask = ref.putFile(files![i]);
-        uploadTask2();
+
+        
+
+      //  print(progressesOfFiles);
+
+        
+
+      //  uploadTask = ref.putFile(files![i]);
+         uploadTask = ref.putFile(file1);
+        uploadTaskProgress();
       }
     } else {}
 
@@ -115,17 +95,51 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            progressesOfFiles?.keys.length != null
+                ? SizedBox(
+                    height: 400,
+                    child: ListView.builder(
+                        itemCount: progressesOfFiles?.keys.length,
+                        itemBuilder: (context, index) {
+                          List<String?> keys = progressesOfFiles!.keys.toList();
+
+                          return keys[index] != null ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                  "${keys[index]} : %${(progressesOfFiles![keys[index]]!*100).round() } "),
+                                  
+                                 
+                          
+                                  SizedBox(
+                                            width: 100,
+                                            child: LinearProgressIndicator(
+                                              value: progressesOfFiles![keys[index]], //controller.value,
+                                              semanticsLabel: 'Linear progress indicator',
+                                            ),
+                                          )
+                          
+                            ],
+                          )  : Center(child: const Text("There is no data"));
+                         
+                        }),
+                  )
+                : const Text("select files pls"),
             _progress != null
-                ? CircularProgressIndicator(
-                    value: _progress, //controller.value,
-                    semanticsLabel: 'Linear progress indicator',
+                ? SizedBox(
+                    width: 200,
+                    child: LinearProgressIndicator(
+                      value: _progress, //controller.value,
+                      semanticsLabel: 'Linear progress indicator',
+                    ),
                   )
                 : const SizedBox(height: 10),
-            Text("Progress: $_progress"),
-            Text("Event: $uploadingFile"),
+            Text(
+                "Progress: %${_progress != null ? (_progress! * 100).round() : _progress}"),
+            Text("File: $uploadingFile"),
             TextButton(
                 onPressed: () {
-                  singleFile();
+                  putFile();
                 },
                 child: const Text("File")),
           ],
